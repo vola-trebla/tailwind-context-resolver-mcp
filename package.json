@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "tailwind-context-resolver-mcp": "./dist/index.js"
+    "tailwind-context-resolver-mcp": "dist/index.js"
   },
   "files": [
     "dist/",

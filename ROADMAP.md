@@ -72,7 +72,7 @@ No Playwright, no browser. Dependencies: `@modelcontextprotocol/sdk`, `zod`, `ta
 
 ```typescript
 export interface TokenQueryResult {
-  namespace: string;           // e.g. "colors.brand"
+  namespace: string; // e.g. "colors.brand"
   tokens: Record<string, string>; // e.g. { primary: "#3b82f6", secondary: "#8b5cf6" }
   count: number;
 }
@@ -80,16 +80,16 @@ export interface TokenQueryResult {
 export interface ClassValidationResult {
   class_string: string;
   valid_classes: string[];
-  invalid_classes: string[];     // not in this project's config
-  warnings: string[];            // e.g. "conflicting layout utilities"
-  config_prefix: string;         // e.g. "tw-" or ""
+  invalid_classes: string[]; // not in this project's config
+  warnings: string[]; // e.g. "conflicting layout utilities"
+  config_prefix: string; // e.g. "tw-" or ""
 }
 
 export interface ConflictResult {
   class_string: string;
   conflicts: Array<{
     classes: string[];
-    reason: string;             // e.g. "multiple layout models: flex, grid"
+    reason: string; // e.g. "multiple layout models: flex, grid"
   }>;
   has_conflicts: boolean;
 }
@@ -98,7 +98,7 @@ export interface ConfigSummary {
   tailwind_version: string;
   config_path: string;
   prefix: string;
-  theme_extensions: string[];  // custom keys added by the project
+  theme_extensions: string[]; // custom keys added by the project
   total_colors: number;
   total_spacing: number;
   plugins: string[];
@@ -137,11 +137,11 @@ const userConfig = await jiti.import(configPath);
 After `resolveConfig`, the full theme is a plain object:
 
 ```typescript
-fullConfig.theme.colors       // all colors including defaults + extensions
-fullConfig.theme.spacing      // spacing scale
-fullConfig.theme.fontFamily   // font stacks
-fullConfig.theme.screens      // breakpoints
-fullConfig.theme.extend       // project-specific additions
+fullConfig.theme.colors; // all colors including defaults + extensions
+fullConfig.theme.spacing; // spacing scale
+fullConfig.theme.fontFamily; // font stacks
+fullConfig.theme.screens; // breakpoints
+fullConfig.theme.extend; // project-specific additions
 ```
 
 For `resolve_theme_tokens`, we do a dot-path lookup:
@@ -164,6 +164,7 @@ Instead: **token-based validation** — check if each class maps to a known them
 ```
 
 Class parsing rules:
+
 - `bg-{color}` → `theme.colors`
 - `text-{color}` → `theme.colors`
 - `p-{n}`, `px-{n}`, `py-{n}`, `pt-{n}` → `theme.spacing`
@@ -178,9 +179,15 @@ Known conflicting groups:
 
 ```typescript
 const CONFLICT_GROUPS = [
-  { name: "layout model", classes: ["flex", "grid", "block", "inline", "inline-flex", "inline-grid", "hidden"] },
+  {
+    name: "layout model",
+    classes: ["flex", "grid", "block", "inline", "inline-flex", "inline-grid", "hidden"],
+  },
   { name: "position", classes: ["static", "relative", "absolute", "fixed", "sticky"] },
-  { name: "overflow", classes: ["overflow-auto", "overflow-hidden", "overflow-visible", "overflow-scroll"] },
+  {
+    name: "overflow",
+    classes: ["overflow-auto", "overflow-hidden", "overflow-visible", "overflow-scroll"],
+  },
   { name: "display", classes: ["table", "table-cell", "table-row", "flow-root", "contents"] },
 ];
 
@@ -230,7 +237,7 @@ Focused on conflict detection only — returns conflicting groups with reasons.
 
 ```typescript
 {
-  config_path: string
+  config_path: string;
 }
 ```
 

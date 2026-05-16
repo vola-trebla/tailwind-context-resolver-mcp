@@ -8,6 +8,7 @@ export interface ClassValidationResult {
   class_string: string;
   valid_classes: string[];
   invalid_classes: string[];
+  possibly_valid_classes: string[];
   warnings: string[];
   config_prefix: string;
 }

@@ -51,7 +51,8 @@ server.registerTool(
   {
     description:
       "Validates a Tailwind CSS className string against the project's actual config. " +
-      "Returns which classes are valid, which are unrecognized custom tokens, and any conflict warnings. " +
+      "Returns valid_classes, invalid_classes (hallucinated tokens), possibly_valid_classes (plugin-generated — cannot verify without PostCSS), and conflict warnings. " +
+      "Handles variants (hover:, dark:, lg:), important (!), opacity modifiers (/50), negative values (-mt-4), and arbitrary values ([32rem]). " +
       "Use to catch hallucinated design tokens before writing code.",
     inputSchema: {
       config_path: z.string().describe("Absolute path to tailwind.config.js or tailwind.config.ts"),

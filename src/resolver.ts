@@ -39,8 +39,24 @@ const CONFLICT_GROUPS = [
   },
 ];
 
-// Variant prefixes to strip before validation (hover:, dark:, lg:, etc.)
-const VARIANT_RE = /^([a-z]+:)+/;
+// Handles hover:, dark:, md:, group-hover:, first-of-type:, etc.
+const VARIANT_RE = /^([\w-]+:)+/;
+
+// Spacing special values not in theme.spacing but always valid as tokens
+const SPACING_SPECIALS = new Set([
+  "auto",
+  "full",
+  "screen",
+  "min",
+  "max",
+  "fit",
+  "px",
+  "svh",
+  "dvh",
+]);
+
+// Color special values not in theme.colors but always valid
+const COLOR_SPECIALS = new Set(["inherit", "current", "transparent", "black", "white"]);
 
 // Classes that are valid Tailwind utilities regardless of theme tokens
 const ALWAYS_VALID = new Set([
@@ -343,41 +359,67 @@ export function resolveTokens(
   return { namespace, tokens, count: Object.keys(tokens).length };
 }
 
+// Strips important modifier and variant prefixes: !hover:md:dark:flex → flex
 function stripVariants(cls: string): string {
-  return cls.replace(VARIANT_RE, "");
+  const withoutImportant = cls.startsWith("!") ? cls.slice(1) : cls;
+  return withoutImportant.replace(VARIANT_RE, "");
+}
+
+// Strips opacity modifier: bg-brand-primary/50 → bg-brand-primary, text-red-500/[.45] → text-red-500
+function stripOpacity(cls: string): string {
+  const slashIdx = cls.lastIndexOf("/");
+  if (slashIdx === -1) return cls;
+  const after = cls.slice(slashIdx + 1);
+  if (/^\d+$/.test(after) || (after.startsWith("[") && after.endsWith("]"))) {
+    return cls.slice(0, slashIdx);
+  }
+  return cls;
 }
 
 function classMatchesTheme(cls: string, config: ResolvedConfig): boolean {
+  // Arbitrary values are always valid: bg-[#ff0000], w-[32rem], [mask-type:alpha]
+  if (/\[.+\]/.test(cls)) return true;
+
+  // Strip opacity modifier before lookups: bg-brand-primary/50 → bg-brand-primary
+  cls = stripOpacity(cls);
+
+  // Strip negative prefix: -mt-4 → mt-4, -z-10 → z-10
+  if (cls.startsWith("-")) cls = cls.slice(1);
+
   if (ALWAYS_VALID.has(cls)) return true;
 
   const theme = config.theme ?? config;
 
-  // bg-{color} / text-{color} / border-{color} / ring-{color}
+  // bg-{color} / text-{color} / border-{color} / ring-{color} / from-{color} etc.
   const colorMatch = cls.match(
     /^(?:bg|text|border|ring|from|via|to|fill|stroke|accent|caret|decoration)-(.+)$/
   );
   if (colorMatch) {
     const token = colorMatch[1];
+    if (COLOR_SPECIALS.has(token)) return true;
     return !!getByPath(theme.colors ?? {}, token.replace(/-/g, "."));
   }
 
-  // p-{n} px-{n} py-{n} pt-{n} pr-{n} pb-{n} pl-{n} m-{n} mx-{n} etc.
+  // p-{n} px-{n} py-{n} pt-{n} pr-{n} pb-{n} pl-{n} m-{n} mx-{n} gap-{n} etc.
   const spacingMatch = cls.match(
     /^(?:p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|space-x|space-y|gap|gap-x|gap-y)-(.+)$/
   );
   if (spacingMatch) {
     const token = spacingMatch[1];
-    return !!theme.spacing?.[token];
+    return SPACING_SPECIALS.has(token) || !!theme.spacing?.[token];
   }
 
-  // w-{n} h-{n} (non-special values)
+  // w-{n} h-{n} min-w-{n} max-w-{n} etc.
   const sizeMatch = cls.match(/^(?:w|h|min-w|min-h|max-w|max-h)-(.+)$/);
   if (sizeMatch) {
     const token = sizeMatch[1];
-    return !!(theme.spacing?.[token] || theme.width?.[token] || theme.height?.[token]);
+    return (
+      SPACING_SPECIALS.has(token) ||
+      !!(theme.spacing?.[token] || theme.width?.[token] || theme.height?.[token])
+    );
   }
 
-  // text-{size} (font size)
+  // text-{size} (font size) — checked after color since text-* also matches colors
   const fontSizeMatch = cls.match(/^text-(.+)$/);
   if (fontSizeMatch) {
     const token = fontSizeMatch[1];
@@ -436,11 +478,11 @@ function classMatchesTheme(cls: string, config: ResolvedConfig): boolean {
       theme.transitionDuration?.[durationMatch[1]] || theme.transitionDelay?.[durationMatch[1]]
     );
 
-  // inset-{n} top-{n} etc (non-zero)
+  // inset-{n} top-{n} right-{n} bottom-{n} left-{n}
   const insetMatch = cls.match(/^(?:inset|top|right|bottom|left)-(.+)$/);
   if (insetMatch) {
     const token = insetMatch[1];
-    return !!(theme.spacing?.[token] || theme.inset?.[token]);
+    return SPACING_SPECIALS.has(token) || !!(theme.spacing?.[token] || theme.inset?.[token]);
   }
 
   return false;
@@ -451,9 +493,11 @@ export function validateClasses(
   classString: string
 ): ClassValidationResult {
   const prefix = (config.prefix as string) ?? "";
+  const hasPlugins = ((config.plugins ?? []) as unknown[]).length > 0;
   const classes = classString.trim().split(/\s+/).filter(Boolean);
   const valid: string[] = [];
   const invalid: string[] = [];
+  const possiblyValid: string[] = [];
   const warnings: string[] = [];
 
   for (const cls of classes) {
@@ -465,12 +509,14 @@ export function validateClasses(
 
     if (classMatchesTheme(withoutPrefix, config)) {
       valid.push(cls);
+    } else if (hasPlugins) {
+      // Can't validate plugin-generated classes (prose, btn, form-input, etc.) without running PostCSS
+      possiblyValid.push(cls);
     } else {
       invalid.push(cls);
     }
   }
 
-  // conflict check inline
   for (const group of CONFLICT_GROUPS) {
     const found = classes.map(stripVariants).filter((c) => group.classes.includes(c));
     if (found.length > 1) {
@@ -482,6 +528,7 @@ export function validateClasses(
     class_string: classString,
     valid_classes: valid,
     invalid_classes: invalid,
+    possibly_valid_classes: possiblyValid,
     warnings,
     config_prefix: prefix,
   };

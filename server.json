@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.vola-trebla/tailwind-context-resolver-mcp",
+  "description": "MCP server that resolves project-specific Tailwind CSS design tokens and validates utility classes against the local config",
+  "repository": {
+    "url": "https://github.com/vola-trebla/tailwind-context-resolver-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "tailwind-context-resolver-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

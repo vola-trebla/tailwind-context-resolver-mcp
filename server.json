@@ -6,12 +6,12 @@
     "url": "https://github.com/vola-trebla/tailwind-context-resolver-mcp",
     "source": "github"
   },
-  "version": "0.1.1",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "tailwind-context-resolver-mcp",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       }

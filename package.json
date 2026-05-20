@@ -1,6 +1,6 @@
 {
   "name": "tailwind-context-resolver-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MCP server that resolves project-specific Tailwind CSS design tokens and validates utility classes against the local config",
   "type": "module",
   "main": "dist/index.js",
@@ -10,7 +10,8 @@
   "files": [
     "dist/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "server.json"
   ],
   "scripts": {
     "build": "rm -rf dist && tsc && chmod +x dist/index.js",

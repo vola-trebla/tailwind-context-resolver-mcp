@@ -4,6 +4,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import * as z from 'zod/v4';
 import { resolveFullConfig, getTailwindVersion } from './config.js';
 import { resolveTokens, validateClasses, detectConflicts } from './resolver.js';
+import { resolveV4ThemeVariables, auditThemeUsage } from './v4-resolver.js';
+import { simulateJitCompilation } from './jit-compiler.js';
 import { ConfigSummary } from './types.js';
 
 const server = new McpServer({
@@ -128,6 +130,85 @@ server.registerTool(
       };
 
       return { content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }] };
+    } catch (err) {
+      return errorResponse(err);
+    }
+  }
+);
+
+server.registerTool(
+  'resolve_v4_theme_variables',
+  {
+    description:
+      "Parses the project's root CSS file (Tailwind CSS v4) and extracts all design tokens defined in @theme blocks. " +
+      'Returns a flat map of CSS custom properties (e.g., --color-primary-500 -> oklch(...)).',
+    inputSchema: {
+      css_path: z
+        .string()
+        .describe(
+          'Absolute path to the CSS file containing the @theme or @import "tailwindcss" directives'
+        ),
+    },
+  },
+  async ({ css_path }) => {
+    try {
+      const result = await resolveV4ThemeVariables(css_path);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return errorResponse(err);
+    }
+  }
+);
+
+server.registerTool(
+  'audit_theme_usage',
+  {
+    description:
+      'Identifies dead design tokens by scanning the project files. ' +
+      'Checks each CSS custom property defined in @theme blocks to see if it is referenced anywhere in the source code.',
+    inputSchema: {
+      project_root: z.string().describe('Absolute path to the project root directory'),
+      css_path: z.string().describe('Absolute path to the CSS file containing the @theme blocks'),
+      scan_dirs: z
+        .array(z.string())
+        .optional()
+        .describe('Optional array of subdirectories to scan (defaults to ["src"])'),
+    },
+  },
+  async ({ project_root, css_path, scan_dirs }) => {
+    try {
+      const result = await auditThemeUsage(project_root, css_path, scan_dirs);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return errorResponse(err);
+    }
+  }
+);
+
+server.registerTool(
+  'simulate_jit_compilation',
+  {
+    description:
+      'Validates Tailwind utility classes against the JIT engine by programmatically compiling them. ' +
+      'Supports complex arbitrary values, JIT modifiers, and custom plugin classes. Returns the generated CSS rules.',
+    inputSchema: {
+      class_string: z.string().describe('Space-separated Tailwind class string to compile'),
+      css_path: z
+        .string()
+        .optional()
+        .describe(
+          "Optional path to the project's CSS entry file (for Tailwind v4 custom theme styles)"
+        ),
+      config_path: z
+        .string()
+        .optional()
+        .describe('Optional path to tailwind.config.js/ts (for Tailwind v3 custom configs)'),
+    },
+  },
+  async ({ class_string, css_path, config_path }) => {
+    try {
+      const result = await simulateJitCompilation(class_string, css_path, config_path);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return errorResponse(err);
     }
